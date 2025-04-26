@@ -51,10 +51,8 @@ def tape(name=None):
             result = func(*args, **kwargs)
             sys.settrace(None)
 
-            # Pomiar end
             end = time.perf_counter()
 
-            # Dodajemy return do logu (nie zapisujemy go w stats)
             log.append({"type": "return", "value": result})
 
             safe_name = name if isinstance(name, str) else func.__name__
@@ -83,7 +81,6 @@ def tape(name=None):
             return result
         return wrapper
 
-    # Obsługuje @tape bez nawiasów
     if callable(name):
         return decorator(name)
 
@@ -98,11 +95,10 @@ def replay(filename="tape_log.json", line_filter=None, var_filter=None, range_fi
     :param var_filter: Variable name or dictionary to filter the logs by (optional).
     :param range_filter: Tuple with start and end line numbers to filter logs by a range (optional).
     """
-    # Upewniamy się, że line_filter to lista
-    if line_filter is not None and not isinstance(line_filter, list):
-        line_filter = [line_filter]  # Konwertuj na listę, jeśli jest to pojedyncza liczba
 
-    # Upewniamy się, że range_filter jest tuplą
+    if line_filter is not None and not isinstance(line_filter, list):
+        line_filter = [line_filter]
+
     if range_filter is not None and not isinstance(range_filter, tuple):
         raise ValueError("range_filter must be a tuple (start_line, end_line)")
 
@@ -115,27 +111,21 @@ def replay(filename="tape_log.json", line_filter=None, var_filter=None, range_fi
             print("=" * 40)
             continue
 
-        # Filtruj logi według numeru linii
         if line_filter and step['line'] not in line_filter:
             continue
 
-        # Filtruj logi według zakresu linii
         if range_filter and not (range_filter[0] <= step['line'] <= range_filter[1]):
             continue
 
-        # Filtruj logi według zmiennej
         if var_filter:
             if isinstance(var_filter, dict):
-                # Filtrujemy według wartości zmiennych (w formie dict)
                 for var, val in var_filter.items():
                     if var not in step['locals'] or step['locals'][var] != val:
                         continue
             else:
-                # Filtrujemy tylko po nazwie zmiennej
                 if var_filter not in step['locals']:
                     continue
 
-        # Wyświetl kod i zmienne
         print(f"Line {step['line']}: {step['code']}")
 
         for var, value in step['locals'].items():
