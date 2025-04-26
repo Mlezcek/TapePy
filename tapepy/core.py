@@ -26,12 +26,10 @@ def tape(name=None):
                     locals_copy = frame.f_locals.copy()
                     globals_copy = frame.f_globals.copy()
 
-                    # Usuwamy funkcje i inne obiekty, które nie mogą być zapisane do JSON
                     locals_copy = {k: v for k, v in locals_copy.items()  if is_serializable(v)}
                     globals_copy = {k: v for k, v in globals_copy.items() if is_serializable(v)}
 
 
-                    # Zmiany w globalnych
                     changed_globals = {
                         k: v for k, v in globals_copy.items()
                         if not k.startswith("__") and (k not in prev_globals or prev_globals[k] != v)
@@ -61,7 +59,6 @@ def tape(name=None):
             with open(filename, "w") as f:
                 json.dump(log, f, indent=2)
 
-                # ** Analiza logu i wypełnienie statystyk **
                 lines = [step["line"] for step in log if step.get("type") == "line"]
                 locals_counter = Counter(
                     var
