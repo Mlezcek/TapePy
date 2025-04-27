@@ -18,7 +18,7 @@ Perfect for debugging, learning, or understanding how your code behaves under th
 Clone the repository and install locally:
 
 ```bash
-git clone https://github.com/your-username/TapePy.git
+git clone https://github.com/Mlezcek/TapePy.git
 cd TapePy
 pip install .
 ```
