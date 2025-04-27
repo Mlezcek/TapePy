@@ -83,7 +83,7 @@ def tape(name=None):
 
     return decorator
 
-def replay(filename="tape_log.json", line_filter=None, var_filter=None, range_filter=None):
+def replay(filename="tape_log.json", replay_speed= 1, line_filter=None, var_filter=None, range_filter=None):
     """
     Replays the execution steps from a JSON log with optional filters.
 
@@ -135,4 +135,4 @@ def replay(filename="tape_log.json", line_filter=None, var_filter=None, range_fi
                 print(f"    {gvar} = {gval}")
 
         print("-" * 40)
-        time.sleep(1)
+        time.sleep(replay_speed)
