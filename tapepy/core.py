@@ -1,3 +1,4 @@
+import copy
 import sys
 import json
 import linecache
@@ -16,23 +17,33 @@ def tape(name=None):
         def wrapper(*args, **kwargs):
             log = []
             prev_globals = {}
-
             start = time.perf_counter()
 
             def tracer(frame, event, arg):
                 if frame.f_code.co_name == func.__name__ and event == "line":
                     lineno = frame.f_lineno
                     code_line = linecache.getline(frame.f_code.co_filename, lineno).strip()
-                    locals_copy = frame.f_locals.copy()
-                    globals_copy = frame.f_globals.copy()
 
-                    locals_copy = {k: v for k, v in locals_copy.items()  if is_serializable(v)}
-                    globals_copy = {k: v for k, v in globals_copy.items() if is_serializable(v)}
+                    locals_copy = {}
+                    for k, v in frame.f_locals.items():
+                        if is_serializable(v):
+                            try:
+                                locals_copy[k] = copy.deepcopy(v)
+                            except Exception:
+                                locals_copy[k] = repr(v)
 
+                    globals_copy = {}
+                    for k, v in frame.f_globals.items():
+                        if not k.startswith("__") and is_serializable(v):
+                            try:
+                                globals_copy[k] = copy.deepcopy(v)
+                            except Exception:
+                                globals_copy[k] = repr(v)
 
                     changed_globals = {
-                        k: v for k, v in globals_copy.items()
-                        if not k.startswith("__") and (k not in prev_globals or prev_globals[k] != v)
+                        k: globals_copy[k]
+                        for k in globals_copy
+                        if k not in prev_globals or prev_globals[k] != globals_copy[k]
                     }
                     prev_globals.update(changed_globals)
 
@@ -50,37 +61,35 @@ def tape(name=None):
             sys.settrace(None)
 
             end = time.perf_counter()
-
             log.append({"type": "return", "value": result})
 
+            # zapis do pliku
             safe_name = name if isinstance(name, str) else func.__name__
             filename = f"tape_{safe_name}.json" if name else "tape_log.json"
-
             with open(filename, "w") as f:
                 json.dump(log, f, indent=2)
 
-                lines = [step["line"] for step in log if step.get("type") == "line"]
-                locals_counter = Counter(
-                    var
-                    for step in log if step.get("type") == "line"
-                    for var in step["locals"].keys()
-                )
-                globals_changes = sum(len(step.get("globals", {})) for step in log)
+            lines = [step["line"] for step in log if step.get("type") == "line"]
+            locals_counter = Counter(
+                var
+                for step in log if step.get("type") == "line"
+                for var in step["locals"].keys()
+            )
+            globals_changes = sum(len(step.get("globals", {})) for step in log)
 
-                TAPE_STATS[func.__name__] = {
-                    "duration_s": end - start,
-                    "total_steps": len(lines),
-                    "most_common_line": Counter(lines).most_common(1)[0] if lines else None,
-                    "locals_usage": locals_counter.most_common(),
-                    "global_changes": globals_changes,
-                }
+            TAPE_STATS[func.__name__] = {
+                "duration_s": end - start,
+                "total_steps": len(lines),
+                "most_common_line": Counter(lines).most_common(1)[0] if lines else None,
+                "locals_usage": locals_counter.most_common(),
+                "global_changes": globals_changes,
+            }
 
             return result
         return wrapper
 
     if callable(name):
         return decorator(name)
-
     return decorator
 
 def replay(filename="tape_log.json", replay_speed= 1, line_filter=None, var_filter=None, range_filter=None):
